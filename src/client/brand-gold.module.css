@@ -1,0 +1,89 @@
+/**
+ * Material tunables for the gold lockup. Every value here is a dial: the SVG
+ * layers read their geometry from the component, and these rules own the
+ * measurable extras that CSS can express (the palette, the light-theme
+ * overrides, the drop shadow and the reduced-motion opt-out).
+ *
+ * The periodic sweep is not a CSS animation: it runs in the shared controller
+ * and never changes size, position or opacity of these elements. Under
+ * `prefers-reduced-motion: reduce` the controller does not register at all, so
+ * the lockup rests as static polished gold instead of flashing every 5s.
+ */
+.root {
+  display: inline-flex;
+  align-items: center;
+  overflow: visible;
+
+  /* Palette: dark-surface gold (the shell's default look). */
+  --bg-gold-0: #efcb7c;
+  --bg-gold-1: #e6bc66;
+  --bg-gold-2: #dbad4e;
+  --bg-gold-3: #d3a23c;
+  --bg-gold-4: #c08e2c;
+  --bg-gold-5: #a87728;
+  --bg-gold-6: #8b5d1c;
+  --bg-gold-7: #795019;
+  --bg-gold-plate-0: #f6e3b2;
+  --bg-gold-plate-1: #ebd08c;
+  --bg-gold-plate-2: #ddba63;
+  --bg-gold-plate-3: #cba043;
+  --bg-gold-plate-4: #b07f2c;
+  --bg-gold-plate-5: #8e6120;
+  --bg-gold-ink: #2e2008;
+}
+
+/*
+ * The shell marks a light surface with the absence of body[data-ds-dark-theme].
+ * On white the same ramp reads washed out, so the light theme shifts every stop
+ * one step deeper while keeping the identical light direction and highlights.
+ * The sweep reads the same properties, so a theme change re-uploads the
+ * material instead of redrawing with the old palette.
+ */
+:global(body:not([data-ds-dark-theme])) .root {
+  --bg-gold-0: #e0b862;
+  --bg-gold-1: #d6ab52;
+  --bg-gold-2: #c99a3f;
+  --bg-gold-3: #bd8d31;
+  --bg-gold-4: #a87a26;
+  --bg-gold-5: #94681f;
+  --bg-gold-6: #7d5618;
+  --bg-gold-7: #6b4714;
+  --bg-gold-plate-0: #ecd49b;
+  --bg-gold-plate-1: #dfc07a;
+  --bg-gold-plate-2: #cfa955;
+  --bg-gold-plate-3: #bb913c;
+  --bg-gold-plate-4: #9d7427;
+  --bg-gold-plate-5: #7d591b;
+  --bg-gold-ink: #2a1c06;
+}
+
+.mark,
+.name {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The drop shadow stays on the SVG: a filter on the wrapper would flatten the
+   extended-range canvas that sits above it in the top layer. */
+.svg {
+  display: block;
+  filter: drop-shadow(0 0.5px 0 rgba(0, 0, 0, 0.55)) drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.28));
+}
+
+/*
+ * The steady softbox reflection painted into the SVG itself. It does not move:
+ * the travelling highlight lives in the sweep canvas, so there is exactly one
+ * beam on screen and no hover animation that could add a second one.
+ */
+.gloss {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gloss {
+    transform: none;
+  }
+}

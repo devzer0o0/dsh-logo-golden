@@ -1,0 +1,5 @@
+# Build output and local dependencies are generated, not versioned.
+lib/
+node_modules/
+*.tsbuildinfo
+.DS_Store
