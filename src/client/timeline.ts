@@ -74,6 +74,15 @@ export interface TimelineSink {
   skipped?(): void
 }
 
+/**
+ * How stale the last frame of a running window may be before an incoming
+ * "we are visible again" signal is treated as a stall and the window is
+ * re-entered from the grid instead of trusted. A host that throttles the
+ * animation loop leaves gaps of this order; a cursor moving across the sidebar
+ * does not.
+ */
+const STALL_MS = 250
+
 /** The shared cadence. */
 export class SweepTimeline {
   private readonly params: SweepParams
@@ -88,6 +97,12 @@ export class SweepTimeline {
   private animation = 0
   private running = false
   private disposed = false
+  /** Nominal start of the window being drawn, or 0 while resting. */
+  private runningStart = 0
+  /** Clock reading of the last frame the loop asked for. */
+  private lastFrameAt = 0
+  /** Grid point of the last cycle the sink was told about, or -1. */
+  private lastCycleStart = -1
 
   /**
    * @param sink - what to draw, and whether drawing is allowed.
@@ -137,16 +152,73 @@ export class SweepTimeline {
   }
 
   /**
-   * Establish a fresh grid, for a resume from a hidden tab or a GPU reset.
+   * Rejoin the existing grid after a pause.
    *
-   * Skipping the cycles that passed while the tab slept is the point: the grid
-   * moves once, and the next start is one delay away instead of a burst of
-   * catch-up sweeps.
+   * This is **not** a restart: the origin is kept, so a resume never adds
+   * another `firstDelayMs` and never shifts the cadence. What the timeline does
+   * depends on where the cycle clock already is:
+   *
+   * - inside a sweep window, the cycle is re-entered at the position its own
+   *   elapsed time asks for, and the rest of the window plays out;
+   * - inside the rest gap, the resting state is painted at once and the next
+   *   start stays the grid point it always was;
+   * - several periods later, only the cycle that is live now can be joined, so
+   *   the missed ones are skipped instead of replayed.
+   *
+   * Calling this repeatedly is harmless. A cycle that is still running with
+   * frames arriving normally is left exactly as it is, so a focus event, a
+   * resize and an intersection callback arriving together cannot cancel a
+   * healthy sweep or stack a second animation loop.
    */
   resume(): void {
     if (this.disposed) return
-    this.stop()
-    this.start()
+    if (!this.established) {
+      this.start()
+      return
+    }
+    const now = this.clock.now()
+    if (this.running && now - this.lastFrameAt <= STALL_MS) return
+    if (!this.sink.canRun()) {
+      this.stop()
+      return
+    }
+    const start = joinableCycleStart(now, this.origin, this.params, false)
+    // Already resting with the next grid point armed and no window to join:
+    // nothing to re-enter and nothing to move. Re-painting the resting state on
+    // every focus event would be work without a visible difference. A live
+    // window is deliberately not covered by this shortcut — that is exactly the
+    // case a resource swap lands in, and it has to be re-entered and painted.
+    if (start === undefined && !this.running && this.timer !== undefined && this.armedOrigin === this.origin) return
+    this.cancelAnimation()
+    if (this.timer !== undefined) {
+      this.clock.clearTimeout(this.timer)
+      this.timer = undefined
+    }
+    this.running = false
+    this.runningStart = 0
+    if (start === undefined) {
+      // The window that passed is gone, but the grid is not: paint the resting
+      // state now so nothing stale stays on screen, and wait for the next grid
+      // point instead of replaying the cycles that were missed.
+      this.sink.rest()
+      this.armNext(now)
+      return
+    }
+    const info: CycleInfo = {
+      start,
+      index: Math.round((start - this.origin) / this.params.periodMs),
+      late: now - start,
+    }
+    // Rejoining the window that was already reported is not a new sweep: the
+    // grid point has not moved, and a burst of pause/resume pairs inside one
+    // window must not look like a burst of sweeps.
+    if (start !== this.lastCycleStart) {
+      this.sink.cycleStart(info)
+      this.lastCycleStart = start
+    }
+    this.running = true
+    this.runningStart = start
+    this.tick(info)
   }
 
   /** Arm the next start on the existing grid, or leave it as it is. */
@@ -208,14 +280,33 @@ export class SweepTimeline {
       late: now - window,
     }
     this.sink.cycleStart(info)
+    this.lastCycleStart = window
     this.running = true
+    this.runningStart = window
     this.tick(info)
   }
 
   /** Draw one frame and schedule the next. */
   private tick(info: CycleInfo): void {
     this.animation = 0
+    this.lastFrameAt = this.clock.now()
     if (this.disposed) return
+    // The host may pause the animation loop because the page is hidden, because
+    // the window was occluded or because the compositor stopped; when the loop
+    // comes back, the frame it was going to draw belongs to a window that has
+    // long closed. Restarting the cadence from an overdue frame would replay a
+    // stale highlight, so the window is dropped and the grid — which never
+    // moved — decides what happens next.
+    if (this.runningStart > 0 && this.lastFrameAt - this.runningStart > this.params.sweepMs) {
+      this.finish()
+      return
+    }
+    if (!this.sink.canRun()) {
+      // Something stopped drawing without a visibility change: put the resting
+      // state back and wait on the grid rather than hold a frozen band.
+      this.finish()
+      return
+    }
     const layout = this.layoutOf()
     if (layout === undefined) {
       this.finish()
@@ -242,6 +333,8 @@ export class SweepTimeline {
   /** Close the window, repaint the rest state and arm the next cycle. */
   private finish(): void {
     this.running = false
+    this.runningStart = 0
+    this.cancelAnimation()
     this.sink.rest()
     this.arm()
   }
@@ -257,6 +350,7 @@ export class SweepTimeline {
     if (!this.running) return false
     this.cancelAnimation()
     this.running = false
+    this.runningStart = 0
     // The window ended without finishing, so the resting state has to be
     // repainted before anyone draws on top of a half-swept canvas.
     this.sink.rest()
@@ -264,7 +358,15 @@ export class SweepTimeline {
     return true
   }
 
-  /** Drop the grid entirely (unmount, hidden tab, capability loss). */
+  /**
+   * Stand down: no timer, no animation frame, no window.
+   *
+   * The grid itself is kept — this is a pause, not a reset — so a later
+   * {@link resume} rejoins the same cadence. The sink is told to clear, because
+   * the frames it already drew are still on screen: cancelling the loop does not
+   * un-paint a highlight, and an unpainted canvas would keep showing the old
+   * band until something else happened to redraw it.
+   */
   stop(): void {
     if (this.timer !== undefined) {
       this.clock.clearTimeout(this.timer)
@@ -272,6 +374,8 @@ export class SweepTimeline {
     }
     this.cancelAnimation()
     this.running = false
+    this.runningStart = 0
+    this.sink.rest()
   }
 
   /** Release everything and refuse further work. */

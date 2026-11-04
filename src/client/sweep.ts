@@ -1,9 +1,9 @@
 /**
  * Sweep timing and the tunable dials behind the brand highlight.
  *
- * "Every five seconds" is a **start-to-start** period, not "play, then wait":
+ * "Every three seconds" is a **start-to-start** period, not "play, then wait":
  * a cycle begins at `origin + cycleIndex * periodMs` and the window inside it
- * is 2700 ms (entry, body, exit), so the lockup rests for the remaining 2300 ms.
+ * is 2700 ms (entry, body, exit), so the lockup rests for the remaining 300 ms.
  * Nothing re-accumulates "play time + wait time", which is what once turned a
  * three-second request into a six-second one.
  *
@@ -94,17 +94,22 @@ export interface SweepParams {
  * with a 0.10 x W core, clamped to 12..24 CSS px, gives a 103 px band and a
  * 19 px core on the shipped 188 px lockup.
  *
- * Timing: 250 + 2200 + 250 = 2700 ms of motion inside a 5000 ms period, so the
- * lockup rests for 2300 ms and the next sweep starts exactly 5000 ms after the
- * previous one started.
+ * Timing: 250 + 2200 + 250 = 2700 ms of motion inside a 3000 ms period, so the
+ * lockup rests for 300 ms and the next sweep starts exactly 3000 ms after the
+ * previous one started. "Every three seconds" is that start-to-start interval;
+ * it is never "2700 ms of sweep, then a three-second wait".
+ *
+ * `firstDelayMs` is separate on purpose: it is how long the very first sweep
+ * waits after the resources become usable, and it is never re-applied when the
+ * page merely becomes visible again — a resume rejoins the existing grid.
  */
 export const SWEEP_PARAMS: SweepParams = Object.freeze({
-  periodMs: 5000,
+  periodMs: 3000,
   entryMs: 250,
   surfaceMs: 2200,
   exitMs: 250,
   sweepMs: 2700,
-  firstDelayMs: 5000,
+  firstDelayMs: 3000,
   tiltDeg: 25,
   mainBandFwhmRatio: 0.55,
   coreFwhmRatio: 0.1,

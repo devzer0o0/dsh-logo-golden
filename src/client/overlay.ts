@@ -253,6 +253,10 @@ export class BrandSweepController {
   private readonly clock: TimelineClock
   private readonly onVisibility = (): void => this.handleVisibility()
   private readonly onViewport = (): void => this.followViewport()
+  private readonly onFocus = (): void => {
+    if (document.hidden) return
+    this.restore('focus')
+  }
 
   /**
    * @param params - tunables; the shipped defaults unless a test overrides them.
@@ -360,9 +364,10 @@ export class BrandSweepController {
   rebuild(reason: string): void {
     if (this.disposed) return
     if (this.motionAllowed() === false) {
-      // Reduced motion was switched on at runtime: stop everything and leave
-      // the static gold SVG as the lockup.
+      // Reduced motion was switched on at runtime: stop everything, clear the
+      // canvas and leave the static gold SVG as the lockup.
       this.timeline?.stop()
+      this.clearHighlight()
       this.hide()
       this.ready = false
       this.phase = 'idle'
@@ -387,7 +392,9 @@ export class BrandSweepController {
     if (boxes.size === 0) {
       this.phase = mounted ? 'anchor-hidden' : 'anchor-missing'
       this.publish()
-      this.hide()
+      // A lockup that lost its box can no longer be followed: pause rather than
+      // leave the last highlight hanging over nothing.
+      this.pause('layout-missing')
       return
     }
     const shapes = this.shapes ?? this.buildShapes()
@@ -396,7 +403,7 @@ export class BrandSweepController {
     if (layout === undefined) {
       this.phase = 'zero-size'
       this.publish()
-      this.hide()
+      this.pause('zero-size')
       return
     }
     const unchanged = this.sameLayout(layout)
@@ -416,10 +423,14 @@ export class BrandSweepController {
     this.show()
     this.publish()
     // A rebuild that measured the same lockup at the same size has nothing new
-    // to upload: re-uploading it would cancel a running cycle and, under a
-    // stream of scroll or resize events, starve the sweep of its start.
+    // to upload. Re-uploading it would cancel a running cycle and, under a
+    // stream of scroll or resize events, starve the sweep of its start — and a
+    // duplicate observation that changed nothing must not even disturb the
+    // cycle that is on screen. Only the position and the grid are reconciled,
+    // both idempotently.
     if (unchanged && this.ready && this.maskKey === layout.width + 'x' + layout.height) {
-      this.syncTimeline()
+      this.place()
+      this.timeline?.arm()
       return
     }
     void this.upload()
@@ -674,7 +685,17 @@ export class BrandSweepController {
     const layout = this.layout
     const renderer = this.renderer
     if (layout === undefined || renderer === undefined) return
+    // The material and the mask being uploaded no longer match what the canvas
+    // shows, so nothing may be drawn from the old resources until this resolves.
+    // The overlay is cleared rather than left holding the frame that was on
+    // screen, and a failure below keeps it cleared.
     this.ready = false
+    // The frame already on screen was drawn from the resources this call is
+    // about to replace. Hiding the overlay is the only way to guarantee it is
+    // gone even when the GPU cannot present a transparent frame, so a slow or
+    // stalled upload can never leave the previous highlight frozen over the
+    // lockup.
+    this.hide()
     const parts: MaterialPart[] = []
     for (const occupant of this.occupants.values()) parts.push({ id: occupant.id, svg: occupant.svg })
     const material = await compositeMaterial(layout, parts)
@@ -682,6 +703,10 @@ export class BrandSweepController {
     if (material === undefined) {
       this.phase = 'material-failed'
       this.publish()
+      // Nothing will be uploaded from this attempt, so the canvas is cleared and
+      // hidden: a failed material must not leave the previous highlight frozen.
+      this.clearHighlight()
+      this.hide()
       diag.record('material-failed')
       return
     }
@@ -694,6 +719,8 @@ export class BrandSweepController {
     if (built === undefined) {
       this.phase = 'material-failed'
       this.publish()
+      this.clearHighlight()
+      this.hide()
       diag.record('mask-failed')
       return
     }
@@ -707,8 +734,15 @@ export class BrandSweepController {
     this.ready = true
     if (this.phase !== 'verified') this.phase = 'drawing'
     this.publish()
-    // Ordinary rebuilds keep the grid; only the first upload starts it.
+    // Ordinary rebuilds keep the grid; only the first upload starts it. A new
+    // material is the one case where the running cycle no longer describes what
+    // is on screen, so the timeline is asked to rejoin the window it is in.
+    // Rejoining paints the frame the clock asks for in this same task, so the
+    // overlay is only made visible again once it holds the right picture —
+    // never the transparent frame of the upload, and never the old highlight.
     this.syncTimeline()
+    this.timeline?.resume()
+    this.show()
   }
 
   /**
@@ -756,9 +790,12 @@ export class BrandSweepController {
       diag.record('origin', { source: 'initial', firstDelay: this.params.firstDelayMs })
       return
     }
+    // The resources under the window that is on screen were just replaced, so
+    // the frames it drew no longer describe anything: stop them, put the resting
+    // lockup back, and let the follow-up resume re-enter the window the clock is
+    // in — which resume() does even though a timer is already armed for the next
+    // grid point, because that window is still live.
     if (this.timeline.cancelCycle()) {
-      // A rebuild landed inside a live window: stop the stale frames, put the
-      // resting lockup back, and let the grid decide the next start.
       this.drawPose(this.restPose())
       diag.record('cycle-cancelled', { reason: 'rebuild' })
     }
@@ -858,17 +895,79 @@ export class BrandSweepController {
     return !window.matchMedia(REDUCED_MOTION).matches
   }
 
-  /** Re-arm after the page becomes visible again, skipping missed sweeps. */
+  /**
+   * The page was hidden or shown again.
+   *
+   * Hiding stops the loop and clears the canvas: cancelling an animation frame
+   * does not un-paint the highlight it already drew, so without an explicit
+   * transparent frame the old band would sit there until the next sweep.
+   *
+   * Showing again is a *resume*, not a first start: the grid is kept, so the
+   * lockup rejoins the cycle its own clock is in — the frame at the position it
+   * should be at, or the resting state while the period is between sweeps.
+   */
   private handleVisibility(): void {
     if (this.disposed) return
     if (document.hidden) {
-      this.cancel()
+      this.pause('hidden')
       return
     }
-    // A tab that was hidden for a while must not replay the cycles it missed.
-    // It gets a fresh grid, one full delay out, exactly like a first start.
-    this.timeline?.resume()
-    this.rebuild('visible')
+    this.restore('visible')
+  }
+
+  /**
+   * Pause without losing the grid: clear the canvas, drop the loop and the
+   * timer, keep the time base and the resources.
+   * @param reason - diagnostic label.
+   */
+  private pause(reason: string): void {
+    const wasSweeping = this.sweeping
+    this.timeline?.stop()
+    // The timeline asks for a transparent frame through its rest callback; when
+    // there is no timeline yet, the controller still has to clear what an
+    // earlier frame left on screen.
+    if (this.timeline === undefined) this.clearHighlight()
+    if (this.popover !== undefined) this.hide()
+    diag.record('pause', { reason, wasSweeping })
+  }
+
+  /**
+   * Bring the overlay back in step with the clock.
+   *
+   * Idempotent by construction: resuming keeps a healthy running window
+   * untouched, rejoins a window that is still open, or waits on the unchanged
+   * grid — it never re-establishes the origin and never stacks a second loop.
+   * The layout is only re-measured when it might have changed.
+   * @param reason - diagnostic label.
+   */
+  private restore(reason: string): void {
+    if (this.disposed) return
+    if (this.motionAllowed() === false) return
+    if (this.ready) {
+      // Correct the picture first, then reveal it: resume() paints the frame the
+      // clock asks for — the window it is in, or the resting state — in this
+      // same task, so the first composited frame after the overlay becomes
+      // visible is already the right one.
+      this.timeline?.resume()
+      this.show()
+      diag.record('restore', { reason, origin: Math.round(this.timeline?.originAt ?? 0), at: Math.round(this.clock.now()) })
+      return
+    }
+    // Nothing is uploaded yet (or an upload failed): a rebuild is what turns the
+    // page back into a drawable overlay, and it keeps the grid once it succeeds.
+    this.rebuild(reason)
+  }
+
+  /**
+   * Paint a fully transparent frame over whatever the last one left.
+   *
+   * The renderer attaches with a clear load and an envelope of zero, so this is
+   * the same submit the resting lockup uses. If the GPU cannot present right
+   * now, hiding the popover is what guarantees the old highlight is gone.
+   */
+  private clearHighlight(): void {
+    if (!this.ready) return
+    this.drawPose(this.restPose())
   }
 
   /** Stop the animation-frame loop and the pending timer. */
@@ -909,6 +1008,11 @@ export class BrandSweepController {
     window.addEventListener('visibilitychange', this.onVisibility)
     window.addEventListener('resize', this.onViewport)
     window.addEventListener('scroll', this.onViewport, true)
+    // Focus is not a visibility change: losing it must not pause a lockup that
+    // is still on screen. Regaining it, however, is the first moment a host
+    // that stalled the animation loop without a visibility event can be put
+    // back in step, so it is treated as a resume — which is idempotent.
+    window.addEventListener('focus', this.onFocus)
     if (typeof MutationObserver === 'function') {
       this.themeObserver = new MutationObserver((records) => {
         for (const record of records) {
@@ -947,12 +1051,11 @@ export class BrandSweepController {
     }
     if (typeof IntersectionObserver === 'function') {
       this.intersectionObserver ??= new IntersectionObserver(() => {
-        if (!this.inViewport()) {
-          this.cancel()
-          this.hide()
-        } else {
-          this.rebuild('intersect')
-        }
+        // Scrolling the sidebar out of view and back is a pause and a resume,
+        // not a rebuild: the phase belongs to the grid, and re-measuring on
+        // every intersection would cancel the cycle that is still running.
+        if (!this.inViewport()) this.pause('intersect')
+        else this.restore('intersect')
       })
       this.intersectionObserver.observe(root)
     }
@@ -994,6 +1097,7 @@ export class BrandSweepController {
       window.removeEventListener('visibilitychange', this.onVisibility)
       window.removeEventListener('resize', this.onViewport)
       window.removeEventListener('scroll', this.onViewport, true)
+      window.removeEventListener('focus', this.onFocus)
       this.listening = false
     }
     this.renderer?.dispose()

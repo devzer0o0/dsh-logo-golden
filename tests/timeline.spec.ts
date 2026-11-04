@@ -113,6 +113,8 @@ const layout: LockupLayout = buildLayout(
 /** What a run recorded. */
 interface Recorder {
   readonly starts: number[]
+  /** Nominal grid position of every cycle that was entered. */
+  readonly nominal: number[]
   readonly frameTimes: number[]
   readonly restTimes: number[]
   readonly clock: ControlledClock
@@ -128,6 +130,7 @@ interface Recorder {
 function run(layoutOf: () => LockupLayout | undefined = () => layout, canRun: () => boolean = () => true): Recorder {
   const clock = new ControlledClock()
   const starts: number[] = []
+  const nominal: number[] = []
   const frameTimes: number[] = []
   const restTimes: number[] = []
   const timeline = new SweepTimeline(
@@ -135,14 +138,17 @@ function run(layoutOf: () => LockupLayout | undefined = () => layout, canRun: ()
       canRun,
       frame: (info: FrameInfo) => frameTimes.push(info.elapsed),
       rest: () => restTimes.push(clock.now()),
-      cycleStart: (info) => starts.push(clock.now()),
+      cycleStart: (info) => {
+        starts.push(clock.now())
+        nominal.push(info.start)
+      },
     },
     layoutOf,
     SWEEP_PARAMS,
     clock,
   )
   timeline.start()
-  return { starts, frameTimes, restTimes, clock, timeline }
+  return { starts, nominal, frameTimes, restTimes, clock, timeline }
 }
 
 afterEach(() => {
@@ -290,19 +296,119 @@ describe('cycle lifecycle', () => {
     expect(timeline.isArmed).toBe(false)
   })
 
-  it('operator gets a fresh grid on resume, one delay out', () => {
-    // Given: a running timeline that has already swept.
+  it('operator never waits out a fresh first delay after a resume', () => {
+    // Given: a running timeline that has already swept, and the grid it runs on.
     const { clock, timeline, starts } = run()
     clock.advance(SWEEP_PARAMS.firstDelayMs + SWEEP_PARAMS.periodMs + 100, 8)
     const before = starts.length
+    const origin = timeline.originAt
     // When: it resumes after the tab was hidden.
     timeline.resume()
-    // Then: the next start is one full delay from the resume, not from the old
-    // grid, and nothing is replayed.
-    clock.advance(SWEEP_PARAMS.firstDelayMs - 1, 8)
+    // Then: the origin is unchanged — a resume never re-establishes the grid —
+    // and the next start is the very next grid point, not "a delay from now".
+    expect(timeline.originAt).toBe(origin)
+    const next = nextSweepStartAt(clock.now(), origin)
+    clock.advance(next - clock.now() - 1, 8)
     expect(starts.length).toBe(before)
     clock.advance(2, 8)
     expect(starts.length).toBe(before + 1)
+    expect(starts[starts.length - 1]!).toBe(next)
+    timeline.dispose()
+  })
+
+  it('operator gets a resume that rejoins the cycle the clock is already in', () => {
+    // Given: a timeline that is inside a sweep window when the page is hidden.
+    const recorder = run()
+    const { clock, timeline, starts, nominal, restTimes } = recorder
+    clock.advance(SWEEP_PARAMS.firstDelayMs + SWEEP_PARAMS.sweepMs / 2, 8)
+    const cycleStart = nominal[nominal.length - 1]!
+    // When: the pause and the resume happen in the same window.
+    timeline.stop()
+    clock.advance(200, 8)
+    timeline.resume()
+    // Then: the same cycle is rejoined — same nominal start, not a new one and
+    // not a fresh delay.
+    expect(nominal[nominal.length - 1]!).toBe(cycleStart)
+    // The window was rejoined, not re-announced: a burst of pause/resume pairs
+    // inside one window is one sweep, not a burst of them.
+    expect(starts.length).toBe(1)
+    expect(timeline.isRunning).toBe(true)
+    // It plays the rest of its window out — measured from the cycle's own start,
+    // not from the moment the page came back — and then arms the next grid
+    // point. With a 300 ms gap between sweeps, that next start arrives inside
+    // this advance, so the assertion is about the grid, not about idleness.
+    clock.advance(SWEEP_PARAMS.periodMs - (clock.now() - cycleStart), 8)
+    expect(restTimes.length).toBeGreaterThanOrEqual(2)
+    // The next cycle begins exactly one period after the cycle that was resumed,
+    // so the pause did not shift the cadence by a single millisecond.
+    expect(nominal[nominal.length - 1]!).toBe(cycleStart + SWEEP_PARAMS.periodMs)
+    timeline.dispose()
+  })
+
+  it('operator gets the resting state, not a wait, when the resume lands in the gap', () => {
+    // Given: a timeline paused during the rest between two sweeps.
+    const recorder = run()
+    const { clock, timeline, starts, restTimes } = recorder
+    clock.advance(SWEEP_PARAMS.firstDelayMs + SWEEP_PARAMS.sweepMs + 100, 8)
+    timeline.stop()
+    // When: it resumes inside the same gap.
+    timeline.resume()
+    // Then: the resting state is painted at once and the next start stays the
+    // grid point it always was.
+    expect(restTimes.length).toBeGreaterThan(0)
+    expect(timeline.isRunning).toBe(false)
+    expect(timeline.originAt).toBe(SWEEP_PARAMS.firstDelayMs)
+    const next = nextSweepStartAt(clock.now(), timeline.originAt)
+    expect(starts.length).toBe(1)
+    clock.advance(next - clock.now() + 2, 8)
+    expect(starts.length).toBe(2)
+    expect(starts[1]! - starts[0]!).toBe(SWEEP_PARAMS.periodMs)
+    timeline.dispose()
+  })
+
+  it('operator gets the live window re-entered after a resource swap', () => {
+    // Given: a timeline inside a sweep window and the grid it runs on.
+    const recorder = run()
+    const { clock, timeline, nominal } = recorder
+    clock.advance(SWEEP_PARAMS.firstDelayMs + SWEEP_PARAMS.sweepMs / 2, 8)
+    const cycleStart = nominal[nominal.length - 1]!
+    const announcements = nominal.length
+    // When: the resources under the window are replaced — the controller cancels
+    // the cycle, is left with a timer for the next grid point, and the upload
+    // then asks to rejoin.
+    expect(timeline.cancelCycle()).toBe(true)
+    expect(timeline.isRunning).toBe(false)
+    timeline.resume()
+    // Then: the window the clock is in is running again at once, at the same
+    // nominal start, with one loop and one timer — no fresh delay and no shift.
+    expect(timeline.isRunning).toBe(true)
+    expect(nominal[nominal.length - 1]!).toBe(cycleStart)
+    expect(clock.frames.size).toBeLessThanOrEqual(1)
+    expect(clock.maxFrames).toBeLessThanOrEqual(1)
+    expect(clock.maxTimers).toBeLessThanOrEqual(1)
+    // The window was repainted after the swap, not re-announced as a new sweep.
+    expect(nominal.length).toBe(announcements)
+    timeline.dispose()
+  })
+
+  it('operator never gets a duplicate loop, timer or grid from repeated resumes', () => {
+    // Given: a timeline inside a sweep window.
+    const recorder = run()
+    const { clock, timeline, starts } = recorder
+    clock.advance(SWEEP_PARAMS.firstDelayMs + SWEEP_PARAMS.sweepMs / 2, 8)
+    const origin = timeline.originAt
+    const before = starts.length
+    // When: visibility, focus and intersection callbacks all fire in a burst.
+    for (let index = 0; index < 12; index += 1) {
+      timeline.resume()
+      clock.advance(4, 8)
+    }
+    // Then: one loop, one origin, and the running cycle was never cancelled.
+    expect(clock.maxFrames).toBe(1)
+    expect(clock.timers.size + clock.frames.size).toBe(1)
+    expect(timeline.originAt).toBe(origin)
+    expect(timeline.isRunning).toBe(true)
+    expect(starts.length).toBe(before)
     timeline.dispose()
   })
 })

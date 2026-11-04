@@ -31,23 +31,26 @@ const layout = buildLayout(
 )!
 
 describe('sweep cadence', () => {
-  it('operator sees a sweep start every five seconds, not every eight', () => {
+  it('operator sees a sweep start every three seconds, not every six', () => {
     // Given: the shipped tunables.
     // When: five consecutive starts on the grid are read.
     const origin = SWEEP_PARAMS.firstDelayMs
     const starts = [0, 1, 2, 3, 4].map((cycle) => origin + cycle * SWEEP_PARAMS.periodMs)
-    // Then: adjacent starts are exactly one period apart, and the window plus
-    // the rest fills that period without a gap or an overlap.
-    expect(SWEEP_PARAMS.periodMs).toBe(5000)
-    expect(SWEEP_PARAMS.firstDelayMs).toBe(SWEEP_PARAMS.periodMs)
+    // Then: adjacent starts are exactly 3000 ms apart, and the window plus the
+    // rest fills that period without a gap or an overlap.
+    expect(SWEEP_PARAMS.periodMs).toBe(3000)
+    expect(SWEEP_PARAMS.firstDelayMs).toBe(3000)
     expect(SWEEP_PARAMS.sweepMs).toBe(2700)
     for (let index = 1; index < starts.length; index += 1) {
-      expect(starts[index]! - starts[index - 1]!).toBe(SWEEP_PARAMS.periodMs)
+      expect(starts[index]! - starts[index - 1]!).toBe(3000)
     }
     // The motion inside the period is unchanged; only the rest between sweeps
-    // grew, so the sweep itself is not slowed down or speeded up.
-    expect(idleMs(SWEEP_PARAMS)).toBe(SWEEP_PARAMS.periodMs - SWEEP_PARAMS.sweepMs)
+    // shrank, so the sweep itself is not slowed down or speeded up.
+    expect(idleMs(SWEEP_PARAMS)).toBe(300)
     expect(SWEEP_PARAMS.sweepMs + idleMs(SWEEP_PARAMS)).toBe(SWEEP_PARAMS.periodMs)
+    // "Every three seconds" is start-to-start: it is never 2700 ms of sweep
+    // followed by another 3000 ms of waiting.
+    expect(SWEEP_PARAMS.sweepMs + 3000).not.toBe(SWEEP_PARAMS.periodMs)
   })
 
   it('operator sees the three stages add up to the window', () => {

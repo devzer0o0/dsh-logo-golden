@@ -56,10 +56,24 @@ fresh clone with nothing else checked out.
   one band, one pass. Every interior metal pixel is reached at full weight (5575
   of 5575 at DPR 2); only the antialiased contour stays partly lit, which is what
   a half-covered edge should do.</sub>
-- **Five-second cadence.** A cycle starts every 5000 ms: 250 ms entry, 2200 ms
-  across the metal, 250 ms exit, 2300 ms at rest. The start times sit on an
+- **The mask is the geometry, not a bounding box.** Each pixel of a stroke is
+  covered by an S x S sample grid computed from the stroke's own edges — the
+  crossing is the point where the scanline meets the edge, interpolated between
+  its endpoints — so a slanted stroke (the diagonal of the "k") is lit across
+  its whole interior instead of clipped to an endpoint's column. The whale's
+  counters, the gaps between strokes and the punched HARNESS lettering stay dark.
+- **Leaving and coming back is not a restart.** Hiding the page drops the loop,
+  the timer and the highlight in one step and keeps the time base. Coming back
+  re-enters the window the clock is in and paints it before the overlay is
+  revealed again, so the first frame after a restore is already correct: no
+  cycle is replayed and no first delay is added. Focus, resize and intersection
+  callbacks are idempotent, and a rebuild that measured the same lockup repaints
+  nothing and does not interrupt a running sweep.
+- **Three-second cadence.** A cycle starts every 3000 ms: 250 ms entry, 2200 ms
+  across the metal, 250 ms exit, 300 ms at rest. The start times sit on an
   absolute grid, so a slow frame cannot drift them and a missed cycle is skipped
-  rather than replayed.
+  rather than replayed. "Every three seconds" is start-to-start — it is never
+  2700 ms of sweep followed by another three-second wait.
 
   ![One cycle](docs/cycle-timing.png)
 
@@ -105,7 +119,7 @@ module loader attaches the browser half only to the row whose specifier matches.
 
 ```sh
 pnpm install
-pnpm test        # 116 unit tests
+pnpm test        # 140 unit tests
 pnpm typecheck
 pnpm build       # tsdown bundle + tsc declarations into lib/
 ```

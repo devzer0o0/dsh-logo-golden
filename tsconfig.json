@@ -24,5 +24,8 @@
     "src/**/*.tsx",
     "tests/**/*.ts",
     "tests/**/*.tsx"
+  ],
+  "exclude": [
+    "tests/_figure.spec.ts"
   ]
 }

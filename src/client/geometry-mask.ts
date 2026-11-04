@@ -345,9 +345,20 @@ function winding(poly: Poly, x: number, y: number): number {
  * @returns true when the point is inside.
  */
 export function inside(polys: readonly Poly[], x: number, y: number): boolean {
+  return windingOf(polys, x, y) !== 0
+}
+
+/**
+ * Nonzero winding number of a polygon set at one point.
+ * @param polys - the shape's subpaths.
+ * @param x - sample point.
+ * @param y - sample point.
+ * @returns the summed winding number.
+ */
+export function windingOf(polys: readonly Poly[], x: number, y: number): number {
   let total = 0
   for (const poly of polys) total += winding(poly, x, y)
-  return total !== 0
+  return total
 }
 
 /**
@@ -455,14 +466,40 @@ export function viewBoxPointAt(
 }
 
 /**
+ * Index of the first subsample column whose centre lies at or right of `x`.
+ *
+ * The tolerance is the rule, not an implementation detail: a subsample at
+ * column `c` sits at `(c + 0.5) * step`, so the crossing belongs to the first
+ * column whose sample is not left of it. Rounding instead of comparing sample
+ * centres would put a whole subsample column — a quarter of a pixel — on the
+ * wrong side of a slanted edge, which is exactly the kind of error this
+ * rasterizer cannot afford.
+ *
+ * @param x - crossing in device pixels.
+ * @param step - device pixels between neighbouring sample centres.
+ * @returns the column index; may lie outside the buffer and must be bounded.
+ */
+function sampleColumnAt(x: number, step: number): number {
+  return Math.ceil(x / step - 0.5)
+}
+
+/**
  * Scan-convert one part into the mask.
  *
- * Every scanline is sampled `subsamples` times at fixed x offsets. The
- * winding number is accumulated **incrementally** along the row: each edge
- * contributes a constant +-1/+1-step between its two crossings, so a row costs
- * one pass over the edges plus one pass over the pixels instead of one point-in-
- * polygon test per sample. That is what makes a full-lockup mask cheap enough
- * to rebuild on a resize instead of stalling the frame.
+ * Each pixel gets a genuine S x S grid of samples: every vertical sample line
+ * has its own crossing list and its own winding run, and the S horizontal
+ * sample centres of each pixel are then tested against that one line. The
+ * winding number is accumulated **incrementally** along a row — each edge adds
+ * a +-1 step at its crossing, and a running sum turns that into the winding of
+ * every sample to the right — so a row costs one pass over the edges per
+ * vertical line plus one pass over the samples, instead of one point-in-polygon
+ * test per sample.
+ *
+ * The crossing itself is the point where the scanline meets the edge,
+ * interpolated between the edge's two endpoints. Using an endpoint instead is
+ * only ever right for a vertical edge; on a slanted one (the diagonal of a "k")
+ * it shifts the whole coverage boundary by up to the edge's horizontal span, so
+ * lit strokes lose their inside.
  *
  * @param target - output buffers.
  * @param transform - the part's transform.
@@ -489,19 +526,23 @@ function rasterizePart(
   const offsets = new Float32Array(SUBSAMPLES)
   for (let index = 0; index < SUBSAMPLES; index += 1) offsets[index] = (index + 0.5) * step
 
-  // Row-level winding contributions, in columns of the supersampled grid.
+  // One crossing list per vertical sample line. Sharing a single list across
+  // the vertical subsamples of a row — what this used to do — adds a crossing
+  // from one line and reads it on another, which is not a coverage at all.
   const columns = (width + 1) * SUBSAMPLES
   const solid = new Int16Array(columns + 1)
   const plate = new Int16Array(columns + 1)
   const keep = new Int16Array(columns + 1)
 
   /**
-   * Add one edge list's crossing deltas to a row.
-   * @param edges - flat edge list, device pixels.
-   * @param deviceY - the row's sample line.
-   * @param into - the column delta buffer.
+   * Add one edge list's crossing deltas to one vertical sample line.
+   * @param edges - flat edge list, in viewBox units.
+   * @param deviceY - the vertical sample line, in device pixels.
+   * @param into - the line's column delta buffer, already cleared.
+   * @returns the leftmost column this list writes, or `columns` for none.
    */
-  const accumulate = (edges: Edges, deviceY: number, into: Int16Array): void => {
+  const accumulate = (edges: Edges, deviceY: number, into: Int16Array): number => {
+    let first = columns
     for (let at = 0; at + 3 < edges.length; at += 4) {
       // Edges are stored in viewBox units; the scanline is in device pixels, so
       // the vertical test happens after the transform, or a row would be tested
@@ -510,71 +551,82 @@ function rasterizePart(
       const by = originY + edges[at + 3]! * scale
       if (ay === by) continue
       let dir = 0
-      let edgeX = 0
-      if (ay <= deviceY && by > deviceY) {
-        dir = 1
-        edgeX = edges[at]!
-      } else if (by <= deviceY && ay > deviceY) {
-        dir = -1
-        edgeX = edges[at + 2]!
-      } else {
+      if (ay <= deviceY && by > deviceY) dir = 1
+      else if (by <= deviceY && ay > deviceY) dir = -1
+      else continue
+      // Where the scanline actually meets the edge, interpolated between the
+      // two endpoints — both in the same device space as `deviceY`. Taking an
+      // endpoint's X instead is only correct for a vertical edge; on a slanted
+      // one it slides the coverage boundary by the edge's horizontal span, so a
+      // lit diagonal stroke loses its own inside.
+      const ax = originX + edges[at]! * scale
+      const bx = originX + edges[at + 2]! * scale
+      const x = ax + ((deviceY - ay) / (by - ay)) * (bx - ax)
+      const column = Math.min(sampleColumnAt(x, step), columns - 1)
+      // A crossing left of the canvas belongs to the first sample; one right of
+      // it changes no sample inside the canvas and is simply dropped.
+      if (column < 0) {
+        into[0] = into[0]! + dir
+        if (first > 0) first = 0
         continue
       }
-      const x = originX + edgeX * scale
-      const column = Math.round(x / step)
-      if (column < 0 || column >= columns) continue
+      if (column < first) first = column
       // The winding only changes at the crossing; walking the row left to right
       // turns the whole scanline into one running sum.
       into[column] = into[column]! + dir
     }
+    return first
   }
 
   for (let py = topDevice; py <= bottomDevice; py += 1) {
-    solid.fill(0)
-    plate.fill(0)
-    keep.fill(0)
-    for (let sub = 0; sub < SUBSAMPLES; sub += 1) {
-      const deviceY = py + offsets[sub]!
-      accumulate(geometry.solidEdges, deviceY, solid)
-      if (geometry.plateEdges.length > 0) accumulate(geometry.plateEdges, deviceY, plate)
-      if (geometry.exclusionEdges.length > 0) accumulate(geometry.exclusionEdges, deviceY, keep)
-    }
-    let wind = 0
-    let plateWind = 0
-    let keepWind = 0
-    // The winding is a running sum from the first column: everything left of
-    // the shape still has to be added, or the run would start inside a hole.
-    for (let px = 0; px < leftLimit; px += 1) {
-      const start = px * SUBSAMPLES
-      for (let sub = 0; sub < SUBSAMPLES; sub += 1) {
-        wind += solid[start + sub]!
-        plateWind += plate[start + sub]!
-        keepWind += keep[start + sub]!
+    for (let sy = 0; sy < SUBSAMPLES; sy += 1) {
+      const deviceY = py + offsets[sy]!
+      solid.fill(0)
+      plate.fill(0)
+      keep.fill(0)
+      let firstColumn = accumulate(geometry.solidEdges, deviceY, solid)
+      if (geometry.plateEdges.length > 0) {
+        firstColumn = Math.min(firstColumn, accumulate(geometry.plateEdges, deviceY, plate))
       }
-    }
-    for (let px = leftLimit; px <= rightLimit; px += 1) {
-      let hits = 0
-      let plateHits = 0
-      const start = px * SUBSAMPLES
-      for (let sub = 0; sub < SUBSAMPLES; sub += 1) {
-        const column = start + sub
-        wind += solid[column]!
-        plateWind += plate[column]!
-        keepWind += keep[column]!
-        if (wind !== 0 && keepWind === 0) {
-          hits += 1
-          if (plateWind !== 0) plateHits += 1
+      if (geometry.exclusionEdges.length > 0) {
+        firstColumn = Math.min(firstColumn, accumulate(geometry.exclusionEdges, deviceY, keep))
+      }
+      if (firstColumn >= columns) continue
+      // Every delta left of the first crossing is zero, so the winding of this
+      // line starts at zero right there; walking the canvas from column 0 would
+      // only add zeros to it.
+      let wind = 0
+      let plateWind = 0
+      let keepWind = 0
+      // The first pixel that can hold a crossing; everything left of it has a
+      // winding of zero on this line, so the run may start there.
+      const firstPixel = Math.max(0, Math.floor(firstColumn / SUBSAMPLES))
+      for (let px = firstPixel; px <= rightLimit; px += 1) {
+        let hits = 0
+        let plateHits = 0
+        const start = px * SUBSAMPLES
+        for (let sx = 0; sx < SUBSAMPLES; sx += 1) {
+          const column = start + sx
+          wind += solid[column]!
+          plateWind += plate[column]!
+          keepWind += keep[column]!
+          if (wind !== 0 && keepWind === 0) {
+            hits += 1
+            if (plateWind !== 0) plateHits += 1
+          }
         }
+        if (hits === 0) continue
+        const index = py * width + px
+        // One sample of the S x S grid this pixel really has, not one of S
+        // shared by the vertical lines.
+        const alpha = hits / (SUBSAMPLES * SUBSAMPLES)
+        const isPlate = plateHits > 0 && plateHits * 2 >= hits
+        // The two classes are kept apart until every part has been drawn, so a
+        // pixel where the whale's antialiased edge meets the wordmark is a union
+        // instead of an overwrite.
+        if (isPlate) class2[index] = class2[index]! + alpha
+        else class1[index] = class1[index]! + alpha
       }
-      if (hits === 0) continue
-      const index = py * width + px
-      const alpha = hits / SUBSAMPLES
-      const isPlate = plateHits > 0 && plateHits * 2 >= hits
-      // The two classes are kept apart until every part has been drawn, so a
-      // pixel where the whale's antialiased edge meets the wordmark is a union
-      // instead of an overwrite.
-      if (isPlate) class2[index] = class2[index]! + alpha
-      else class1[index] = class1[index]! + alpha
     }
   }
 }
@@ -659,27 +711,30 @@ function rasterizePartInexact(
 ): void {
   const { width, class1, class2 } = target
   const height = class1.length / Math.max(width, 1)
+  const perAxis = SUBSAMPLES * SUBSAMPLES
   const step = 1 / SUBSAMPLES
   for (let py = 0; py < height; py += 1) {
     for (let px = 0; px < width; px += 1) {
       let hits = 0
       let plateHits = 0
       for (let sy = 0; sy < SUBSAMPLES; sy += 1) {
+        const y = py + (sy + 0.5) * step
         for (let sx = 0; sx < SUBSAMPLES; sx += 1) {
-          const point = viewBoxPointAt(transform, geometry.viewBox, px + (sx + 0.5) * step, py + (sy + 0.5) * step)
-          if (point === undefined) continue
-          const bounds = geometry.bounds
-          if (point.x < bounds.minX || point.x > bounds.maxX || point.y < bounds.minY || point.y > bounds.maxY) continue
-          const kind = surfaceAt(geometry, point.x, point.y)
-          if (kind === SURFACE_NONE) continue
+          const point = viewBoxPointAt(transform, geometry.viewBox, px + (sx + 0.5) * step, y)
+          if (point === undefined) break
+          // The same three questions the fast path answers with its winding
+          // runs: solid metal, plate, and the punched lettering.
+          const wind = windingOf(geometry.outline, point.x, point.y)
+          if (wind === 0) continue
+          if (geometry.exclusions.length > 0 && windingOf(geometry.exclusions, point.x, point.y) !== 0) continue
           hits += 1
-          if (kind === SURFACE_PLATE) plateHits += 1
-          break
+          if (geometry.plates.length > 0 && windingOf(geometry.plates, point.x, point.y) !== 0) plateHits += 1
         }
       }
       if (hits === 0) continue
       const index = py * width + px
-      const alpha = hits / (SUBSAMPLES * SUBSAMPLES)
+      // Every one of the S x S samples counts, exactly as in the fast path.
+      const alpha = hits / perAxis
       const isPlate = plateHits > 0 && plateHits * 2 >= hits
       if (isPlate) class2[index] = class2[index]! + alpha
       else class1[index] = class1[index]! + alpha
