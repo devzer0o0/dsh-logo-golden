@@ -2,10 +2,14 @@
 
 A polished-gold rendition of the DeepSeek Harness sidebar brand lockup — the whale
 mark, the `deepseek` wordmark and the HARNESS plate — drawn from the original
-vectors, with a diagonal metal sweep that crosses the whole lockup every three
+vectors, with a diagonal metal sweep that crosses the whole lockup every five
 seconds.
 
 ![The sweep crossing the lockup](docs/sweep-strip.png)
+
+<sub>Five frames of one cycle, captured from a live DSH host: the beam enters at
+the whale, crosses the wordmark, reaches the HARNESS plate, and the lockup
+returns to the resting gold.</sub>
 
 This repository is the standalone distribution of the plugin
 `@linxin666/dsh-client-ui-brand-gold`. It carries the full source, the test
@@ -25,15 +29,45 @@ fresh clone with nothing else checked out.
   champagne core. The deformation (1.08x local magnification, 0.8 px lift) moves
   the same material the light moves over, and it returns to the identity mapping
   at rest.
+
+  ![Beam profile](docs/band-profile.png)
+
+  <sub>The delivered profile on the shipped 188 px lockup, plotted from the same
+  arithmetic the shader runs: a 103.4 px band at half maximum, an 18.8 px core,
+  and a finite support radius of 186 px where the light is exactly zero — which
+  is what makes "the band has left" a provable statement rather than a fade.</sub>
 - **Every metal surface, including the dark ones.** A geometric mask built from
   the original vectors decides what counts as metal. The whale's fill, every
   solid stroke and the plate are lit; the plate lettering, the counters, the
   gaps between strokes and the background never are. A shadowed gold stroke at
   8% luminance is lit; the dark HARNESS ink at the same luminance is not.
+
+  ![The geometric metal mask](docs/mask-coverage.png)
+
+  <sub>The mask the shader uploads, straight from the shipped vectors: gold is
+  wordmark and whale metal, the deeper tone is the plate, and the dark gaps are
+  the counters, the plate lettering and the background. No brightness threshold
+  takes part in this decision.</sub>
+
+  ![When each metal pixel reaches the core](docs/coverage-over-time.png)
+
+  <sub>Measured over one full cycle, and coloured by *when* rather than by how
+  much: the whale is reached first, the wordmark in the middle, the plate last —
+  one band, one pass. Every interior metal pixel is reached at full weight (5575
+  of 5575 at DPR 2); only the antialiased contour stays partly lit, which is what
+  a half-covered edge should do.</sub>
 - **Five-second cadence.** A cycle starts every 5000 ms: 250 ms entry, 2200 ms
   across the metal, 250 ms exit, 2300 ms at rest. The start times sit on an
   absolute grid, so a slow frame cannot drift them and a missed cycle is skipped
   rather than replayed.
+
+  ![One cycle](docs/cycle-timing.png)
+
+  <sub>One cycle in the four tracks the controller actually runs: the visible
+  window against the rest, the three stages, the beam centre crossing from the
+  first to the last metal surface, and the two amplitudes that travel with it.
+  The light envelope stays at full until the tail has left the metal, so no
+  surface is dimmed by a fade.</sub>
 - **The cadence survives a busy page.** Scrolling or resizing re-places the
   overlay instead of re-uploading it, and a pending timer whose grid has not
   moved is never re-armed, so a streaming session that scrolls continuously
