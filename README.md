@@ -30,8 +30,8 @@ fresh clone with nothing else checked out.
   solid stroke and the plate are lit; the plate lettering, the counters, the
   gaps between strokes and the background never are. A shadowed gold stroke at
   8% luminance is lit; the dark HARNESS ink at the same luminance is not.
-- **Three-second cadence.** A cycle starts every 3000 ms: 250 ms entry, 2200 ms
-  across the metal, 250 ms exit, 300 ms at rest. The start times sit on an
+- **Five-second cadence.** A cycle starts every 5000 ms: 250 ms entry, 2200 ms
+  across the metal, 250 ms exit, 2300 ms at rest. The start times sit on an
   absolute grid, so a slow frame cannot drift them and a missed cycle is skipped
   rather than replayed.
 - **The cadence survives a busy page.** Scrolling or resizing re-places the
