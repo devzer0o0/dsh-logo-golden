@@ -29,7 +29,7 @@ import { GoldBrandName } from './GoldBrandName.tsx'
 import { diag } from './diag.ts'
 
 /** Registrant label shown in the slot ledger. */
-const REGISTRANT = '@linxin666/dsh-client-ui-brand-gold'
+const REGISTRANT = 'dsh-logo-golden'
 
 /**
  * One step below the stock occupants: the registry renders the lowest live

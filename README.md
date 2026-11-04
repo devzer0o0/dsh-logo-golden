@@ -12,7 +12,7 @@ the whale, crosses the wordmark, reaches the HARNESS plate, and the lockup
 returns to the resting gold.</sub>
 
 This repository is the standalone distribution of the plugin
-`@linxin666/dsh-client-ui-brand-gold`. It carries the full source, the test
+`dsh-logo-golden`. It carries the full source, the test
 suite and the build preset it needs, so `pnpm install && pnpm build` works in a
 fresh clone with nothing else checked out.
 
@@ -86,7 +86,7 @@ fresh clone with nothing else checked out.
 The plugin mounts as a Cordis bundle row. In a DSH profile:
 
 ```sh
-dsh plugin --profile desktop add @linxin666/dsh-client-ui-brand-gold
+dsh plugin --profile desktop add dsh-logo-golden
 ```
 
 or add the row by hand to the profile's `cordis.patch.yml`:
@@ -94,7 +94,7 @@ or add the row by hand to the profile's `cordis.patch.yml`:
 ```yaml
 - insert:
     - id: ui-brand-gold
-      name: "@linxin666/dsh-client-ui-brand-gold"
+      name: "dsh-logo-golden"
 ```
 
 The row id must not collide with an official row (the loader keeps one winner per

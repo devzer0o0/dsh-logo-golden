@@ -8,7 +8,7 @@ DeepSeek Harness 侧栏品牌组合的抛光黄金版本 —— 鲸鱼图标、`
 <sub>一个周期中的五帧，取自真实 DSH 宿主：光带从鲸鱼进入，穿过字标，抵达 HARNESS
 铭牌，随后组合回到静止的金色。</sub>
 
-本仓库是插件 `@linxin666/dsh-client-ui-brand-gold` 的独立分发版：完整源码、测试与构建
+本仓库是插件 `dsh-logo-golden` 的独立分发版：完整源码、测试与构建
 所需预设都在这里，新克隆下 `pnpm install && pnpm build` 即可工作，不依赖其它检出。
 
 ## 它做了什么
@@ -60,7 +60,7 @@ DeepSeek Harness 侧栏品牌组合的抛光黄金版本 —— 鲸鱼图标、`
 插件以 Cordis bundle 行的形式挂载。在 DSH profile 中：
 
 ```sh
-dsh plugin --profile desktop add @linxin666/dsh-client-ui-brand-gold
+dsh plugin --profile desktop add dsh-logo-golden
 ```
 
 或手工在 profile 的 `cordis.patch.yml` 中加入：
@@ -68,7 +68,7 @@ dsh plugin --profile desktop add @linxin666/dsh-client-ui-brand-gold
 ```yaml
 - insert:
     - id: ui-brand-gold
-      name: "@linxin666/dsh-client-ui-brand-gold"
+      name: "dsh-logo-golden"
 ```
 
 行 id 不得与官方行冲突（loader 对同一 id 只保留一个且不报错），`name` 必须与包名完全

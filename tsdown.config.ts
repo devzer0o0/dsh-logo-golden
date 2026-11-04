@@ -10,4 +10,4 @@
  */
 import { clientBundle } from './build/tsdown.client.ts'
 
-export default clientBundle('@linxin666/dsh-client-ui-brand-gold', ['src/index.ts'])
+export default clientBundle('dsh-logo-golden', ['src/index.ts'])
