@@ -1,0 +1,169 @@
+{
+  "checked_at": "2026-11-09T09:13:40+0800",
+  "bvid": "BV1XrWs69Edp",
+  "archive": {
+    "bvid": "BV1XrWs69Edp",
+    "aid": 117583772650373,
+    "title": "侧栏里的金色，会动。｜dsh-logo-golden 扫光插件",
+    "state": 0,
+    "state_desc": "开放浏览",
+    "duration": 68,
+    "tid": 230,
+    "cover": "http://i1.hdslb.com/bfs/archive/d924a30da079173b09f6b13d03c89ef27d8de03d.png",
+    "ctime": 1794186117
+  },
+  "view": {
+    "bvid": "BV1XrWs69Edp",
+    "aid": 117583772650373,
+    "cid": 43449713325,
+    "title": "侧栏里的金色，会动。｜dsh-logo-golden 扫光插件",
+    "state": 0,
+    "duration": 68,
+    "pubdate": 1794186815,
+    "owner": {
+      "mid": 11119522,
+      "name": "Lamedh",
+      "face": "https://i1.hdslb.com/bfs/face/5937eb15f5be6489f7f4cb508342dc78995aaccc.jpg"
+    },
+    "pages": [
+      {
+        "cid": 43449713325,
+        "page": 1,
+        "from": "vupload",
+        "part": "正片",
+        "duration": 68,
+        "vid": "",
+        "weblink": "",
+        "dimension": {
+          "width": 1920,
+          "height": 1080,
+          "rotate": 0
+        },
+        "first_frame": "http://i2.hdslb.com/bfs/storyff/_00002v9ktgn3mcqq12vyn0i45zu7znb_firsti.jpg",
+        "ctime": 1794186815,
+        "asr_language": "zxx"
+      }
+    ]
+  },
+  "playurl": {
+    "quality": 125,
+    "format": "hdflv2",
+    "accept_quality": [
+      125,
+      112,
+      80,
+      64,
+      32,
+      16
+    ],
+    "accept_description": [
+      "真彩 HDR",
+      "高清 1080P+",
+      "高清 1080P",
+      "高清 720P",
+      "清晰 480P",
+      "流畅 360P"
+    ],
+    "support_formats": [
+      {
+        "quality": 125,
+        "desc": "HDR 真彩",
+        "codecs": [
+          "hvc1.2.4.L120.90"
+        ]
+      },
+      {
+        "quality": 112,
+        "desc": "1080P 高码率",
+        "codecs": [
+          "avc1.640032"
+        ]
+      },
+      {
+        "quality": 80,
+        "desc": "1080P 高清",
+        "codecs": [
+          "avc1.640032"
+        ]
+      },
+      {
+        "quality": 64,
+        "desc": "720P 准高清",
+        "codecs": [
+          "avc1.640028"
+        ]
+      },
+      {
+        "quality": 32,
+        "desc": "480P 标清",
+        "codecs": [
+          "avc1.64001F"
+        ]
+      },
+      {
+        "quality": 16,
+        "desc": "360P 流畅",
+        "codecs": [
+          "avc1.64001E"
+        ]
+      }
+    ],
+    "hdr_quality_125": true,
+    "video_streams": [
+      {
+        "id": 125,
+        "codecid": 12,
+        "codecs": "hvc1.2.4.L120.90",
+        "width": 1920,
+        "height": 1080,
+        "fps": "30.000",
+        "bandwidth": 1602703
+      },
+      {
+        "id": 112,
+        "codecid": 7,
+        "codecs": "avc1.640032",
+        "width": 1920,
+        "height": 1080,
+        "fps": "30.000",
+        "bandwidth": 456586
+      },
+      {
+        "id": 80,
+        "codecid": 7,
+        "codecs": "avc1.640032",
+        "width": 1920,
+        "height": 1080,
+        "fps": "30.000",
+        "bandwidth": 270388
+      },
+      {
+        "id": 64,
+        "codecid": 7,
+        "codecs": "avc1.640028",
+        "width": 1280,
+        "height": 720,
+        "fps": "30.000",
+        "bandwidth": 122101
+      },
+      {
+        "id": 32,
+        "codecid": 7,
+        "codecs": "avc1.64001F",
+        "width": 852,
+        "height": 480,
+        "fps": "30.000",
+        "bandwidth": 71579
+      },
+      {
+        "id": 16,
+        "codecid": 7,
+        "codecs": "avc1.64001E",
+        "width": 640,
+        "height": 360,
+        "fps": "30.000",
+        "bandwidth": 50323
+      }
+    ]
+  }
+}

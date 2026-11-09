@@ -1,0 +1,30 @@
+# Keep only reusable sources and public delivery records in this repository.
+# Captures, credentials, environments, renders and browser diagnostics stay local.
+*
+!.gitignore
+!README.md
+!scripts/
+!scripts/design.py
+!scripts/make_music.py
+!scripts/make_video.py
+!scripts/make_video_hdr.py
+!scripts/make_cover.py
+!scripts/publish_bilibili.py
+!scripts/check_bvid_status.py
+!scripts/verify_hdr_source.py
+!hdr/
+!hdr/tools/
+!hdr/tools/HDRRecorder.swift
+!cover/
+!cover/dsh-logo-golden-cover-1146x717.png
+!publish/
+!publish/metadata.json
+!publish/publish-record.json
+!publish/dsh-logo-golden-promo-zh.srt
+!publish/hdr-verification.json
+!publish/final-recheck.json
+!publish/records/
+!publish/records/target-11119522/
+!publish/records/target-11119522/metadata.json
+!publish/records/target-11119522/upload-result.json
+!publish/records/target-11119522/status.json

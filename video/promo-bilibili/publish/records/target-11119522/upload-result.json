@@ -1,0 +1,57 @@
+{
+  "submitted_at": "2026-11-09T01:01:57.562782+00:00",
+  "elapsed_seconds": 12.05,
+  "status": "submitted",
+  "result": {
+    "aid": 117583772650373,
+    "bvid": "BV1XrWs69Edp"
+  },
+  "title": "侧栏里的金色，会动。｜dsh-logo-golden 扫光插件",
+  "bvid": "BV1XrWs69Edp",
+  "aid": 117583772650373,
+  "archive": {
+    "bvid": "BV1XrWs69Edp",
+    "aid": 117583772650373,
+    "title": "侧栏里的金色，会动。｜dsh-logo-golden 扫光插件",
+    "state": 0,
+    "state_desc": "开放浏览",
+    "duration": 68,
+    "tid": 230,
+    "cover": "http://i1.hdslb.com/bfs/archive/d924a30da079173b09f6b13d03c89ef27d8de03d.png"
+  },
+  "view": {
+    "bvid": "BV1XrWs69Edp",
+    "aid": 117583772650373,
+    "cid": 43449713325,
+    "title": "侧栏里的金色，会动。｜dsh-logo-golden 扫光插件",
+    "state": 0,
+    "state_desc": null,
+    "duration": 68,
+    "pubdate": 1794186815,
+    "owner": {
+      "mid": 11119522,
+      "name": "Lamedh",
+      "face": "https://i1.hdslb.com/bfs/face/5937eb15f5be6489f7f4cb508342dc78995aaccc.jpg"
+    }
+  },
+  "playurl": {
+    "quality": 125,
+    "accept_quality": [
+      125,
+      112,
+      80,
+      64,
+      32,
+      16
+    ],
+    "accept_description": [
+      "真彩 HDR",
+      "高清 1080P+",
+      "高清 1080P",
+      "高清 720P",
+      "清晰 480P",
+      "流畅 360P"
+    ],
+    "hdr_quality_125": true
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "title": "侧栏里的金色，会动。｜dsh-logo-golden 扫光插件",
+  "desc": "dsh-logo-golden 是 DeepSeek Harness 桌面端的侧栏品牌插件：为鲸鱼、deepseek 字标和 HARNESS 铭牌加上黄金金属材质，以及每 3.000 秒一次的斜向扫光。\n\n本片画面来自当前插件在真实 DeepSeek Harness 桌面端中的运行录屏；静止、扫光、完整周期均为实机捕捉。片中 0.5× 慢放、局部放大与分屏对比均在画面内标注。扫光周期以源码 SWEEP_PARAMS.periodMs = 3000 与录屏实测互相核对。\n\n安装命令（来自 README，已与 v0.4.16 核对）：\ndsh plugin --profile desktop add dsh-logo-golden\n\n仓库：https://github.com/devzer0o0/dsh-logo-golden\n版本：0.4.16 · License: Apache-2.0\n\n制作说明：\n- 原创程序化配乐，无外部采样\n- 画面为真实宿主录屏；脚本、剪辑与封面由 AI 辅助完成，画面非 AI 生成\n- 本片为 HDR10 母版（HEVC Main10 / PQ / BT.2020），由 SDR 底合成；未做 HDR 显示器实测，平台转码与设备支持会影响最终呈现",
+  "tags": [
+    "DeepSeek Harness",
+    "dsh-logo-golden",
+    "桌面端",
+    "插件",
+    "UI",
+    "金色",
+    "扫光",
+    "开源",
+    "软件应用",
+    "科技"
+  ],
+  "tid": 230,
+  "category": "科技 / 软件应用",
+  "copyright": 1,
+  "original": true,
+  "no_reprint": false,
+  "page_title": "正片",
+  "cover": "cover/dsh-logo-golden-cover-1146x717.png",
+  "video": "build/dsh-logo-golden-promo-1080p-hdr.mp4",
+  "srt": "publish/dsh-logo-golden-promo-zh.srt",
+  "target_uid": 11119522,
+  "target_username": "Lamedh",
+  "ai_declaration": "assisted",
+  "ai_note": "画面为真实宿主录屏；脚本、剪辑与封面由 AI 辅助，画面非 AI 生成；简介已披露。B站投稿页未发现独立 AI 声明字段，创作声明按平台默认标注为自制。"
+}

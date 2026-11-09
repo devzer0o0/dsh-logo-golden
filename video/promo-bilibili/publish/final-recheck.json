@@ -1,0 +1,30 @@
+{
+  "checked_at": "2026-11-09T09:45:24+08:00",
+  "target_video": {
+    "bvid": "BV1XrWs69Edp",
+    "url": "https://www.bilibili.com/video/BV1XrWs69Edp",
+    "owner_uid": 11119522,
+    "owner_name": "Lamedh",
+    "state": 0,
+    "selected_quality": 125,
+    "hdr_streams": [
+      {
+        "id": 125,
+        "codecid": 12,
+        "codecs": "hvc1.2.4.L120.90",
+        "width": 1920,
+        "height": 1080,
+        "fps": "30.000",
+        "bandwidth": 1602703
+      }
+    ]
+  },
+  "old_video": {
+    "bvid": "BV1CvWH6wEaj",
+    "owner_uid": 368976229,
+    "archive_state": -50,
+    "public_api_code": 62012,
+    "publicly_accessible": false,
+    "note": "后台state=-50，匿名公开接口code=62012；不可公开访问，不据此声称永久删除。"
+  }
+}

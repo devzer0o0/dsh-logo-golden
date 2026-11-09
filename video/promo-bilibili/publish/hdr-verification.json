@@ -1,0 +1,46 @@
+{
+  "checked_at": "2026-11-09T09:45:23+08:00",
+  "capture": {
+    "file": "hdr/capture/brand-hdr-24.mov",
+    "codec_name": "hevc",
+    "profile": "Main 10",
+    "width": 400,
+    "height": 66,
+    "pix_fmt": "yuv420p10le",
+    "color_space": "bt2020nc",
+    "color_transfer": "smpte2084",
+    "color_primaries": "bt2020",
+    "r_frame_rate": "120/1",
+    "side_data_list": [
+      {},
+      {}
+    ],
+    "duration": "24.141667"
+  },
+  "master": {
+    "file": "build/dsh-logo-golden-promo-1080p-hdr.mp4",
+    "codec_name": "hevc",
+    "profile": "Main 10",
+    "width": 1920,
+    "height": 1080,
+    "pix_fmt": "yuv420p10le",
+    "color_space": "bt2020nc",
+    "color_transfer": "smpte2084",
+    "color_primaries": "bt2020",
+    "r_frame_rate": "30/1",
+    "duration": "67.000000"
+  },
+  "reference_white_nits_for_encoding": 100,
+  "capture_first_frame_peak_relative_to_reference_white": 19.446492545497556,
+  "cached_linear_shape": [
+    971,
+    66,
+    400,
+    3
+  ],
+  "cached_linear_peak": 20.53125,
+  "cached_channels_above_reference_white": 2628890,
+  "first_frame_cache_correlation": 0.9998985524215942,
+  "first_frame_cache_mean_absolute_difference": 0.0053187726649220075,
+  "note": "真实采集文件的PQ信号核验；解码与色度重建方法可产生数值差异。未测量显示器物理亮度。"
+}
