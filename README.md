@@ -2,7 +2,7 @@
 
 A polished-gold rendition of the DeepSeek Harness sidebar brand lockup — the whale
 mark, the `deepseek` wordmark and the HARNESS plate — drawn from the original
-vectors, with a diagonal metal sweep that crosses the whole lockup every five
+vectors, with a diagonal metal sweep that crosses the whole lockup every three
 seconds.
 
 ![The sweep crossing the lockup](docs/sweep-strip.png)
