@@ -5,7 +5,7 @@
   "url": "https://www.bilibili.com/video/BV1XrWs69Edp",
   "account": "Lamedh",
   "uid": 11119522,
-  "title": "侧栏里的金色，会动。｜dsh-logo-golden 扫光插件",
+  "title": "【DSH插件】DeepSeek Harness 金色Logo美化｜HDR扫光实机演示",
   "tid": 230,
   "category": "科技 / 软件应用",
   "copyright": 1,
@@ -34,5 +34,40 @@
   "source_version": "0.4.16",
   "license": "Apache-2.0",
   "repo": "https://github.com/devzer0o0/dsh-logo-golden",
-  "install": "dsh plugin --profile desktop add dsh-logo-golden"
+  "install": "dsh plugin --profile desktop add dsh-logo-golden",
+  "title_update": {
+    "updated_at": "2026-11-09T13:16:53+08:00",
+    "previous_title": "侧栏里的金色，会动。｜dsh-logo-golden 扫光插件",
+    "public_title_verified": true,
+    "keywords": [
+      "DSH插件",
+      "DeepSeek Harness",
+      "金色Logo",
+      "美化",
+      "HDR",
+      "扫光",
+      "实机演示"
+    ],
+    "reference_videos": [
+      {
+        "title": "deepseek美化换肤教程，免费换肤插件安装方法！Harness桌面端下载，美化桌面！",
+        "url": "https://www.bilibili.com/video/BV13kno6YEK3/"
+      },
+      {
+        "title": "【dsh 揽尽万象】装上这100个插件dsh不牛逼炸了",
+        "url": "https://www.bilibili.com/video/BV1supA6VEDD/"
+      }
+    ],
+    "preserved": [
+      "video",
+      "cover",
+      "description",
+      "tags",
+      "category",
+      "copyright",
+      "comments",
+      "subtitles",
+      "HDR stream"
+    ]
+  }
 }

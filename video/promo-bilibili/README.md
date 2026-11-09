@@ -7,9 +7,10 @@
 - 公开页：https://www.bilibili.com/video/BV1XrWs69Edp
 - 状态（2026-11-09 09:13:40 CST 复查）：**开放浏览**（member archive `state=0`；公开 view API `code=0`；公开页 HTTP 200）
 - 发布时刻：2026-11-09 09:13:35 CST
+- 标题于 2026-11-09 更新：参考同类 DSH 插件视频，将 DSH、DeepSeek Harness、美化插件、HDR 和扫光等关键词放入标题；已核对公开页生效。参考视频及旧标题见 `publish/publish-record.json` 的 `title_update`。
 - B站时长：68 s（母版 67.000 s，平台向上取整）
 - 分区：科技 / 软件应用（tid 230）
-- 标题：`侧栏里的金色，会动。｜dsh-logo-golden 扫光插件`
+- 标题：`【DSH插件】DeepSeek Harness 金色Logo美化｜HDR扫光实机演示`
 - 标签：DeepSeek Harness, dsh-logo-golden, 桌面端, 插件, UI, 金色, 扫光, 开源, 软件应用, 科技
 - 类型：自制（`copyright=1`）
 - 封面：`cover/dsh-logo-golden-cover-1146x717.png`（1146×717，16:10，与 B站 CDN 返回图 SHA-256 一致）
