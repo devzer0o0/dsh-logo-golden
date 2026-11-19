@@ -97,6 +97,8 @@ fresh clone with nothing else checked out.
 
 ## Install
 
+Requires dsh `>=0.2.2-rc.3` — the 0.2.2 sidebar slot contract, verified against a 0.2.2-rc.3 host.
+
 The plugin mounts as a Cordis bundle row. In a DSH profile:
 
 ```sh

@@ -65,6 +65,8 @@ DeepSeek Harness 侧栏品牌组合的抛光黄金版本 —— 鲸鱼图标、`
 
 ## 安装
 
+需要 dsh `>=0.2.2-rc.3` —— 0.2.2 的侧栏插槽契约，已在 0.2.2-rc.3 宿主上验证。
+
 插件以 Cordis bundle 行的形式挂载。在 DSH profile 中：
 
 ```sh
